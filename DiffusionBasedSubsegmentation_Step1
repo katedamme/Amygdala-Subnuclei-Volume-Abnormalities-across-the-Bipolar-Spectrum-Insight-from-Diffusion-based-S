@@ -1,0 +1,42 @@
+# Amygdala-Subnuclei-Volume-Abnormalities-across-the-Bipolar-Spectrum-Insight-from-Diffusion-based-S
+This repository includes a collection of fsl and freesurfer based scripts to subsegment the amygdala
+# STEP 1 : Making Masks with FS and Diffusion Tracts with ProbtractX By KS Damme
+# May 24 2017
+# see ZM Saygin 2011 (https://www.ncbi.nlm.nih.gov/pubmed/21396459) for Logic  - rewritten KSD by KSD 2017 and 2018
+# Modified from Saygin et al. 2011 Logic
+#   ***Current Script***
+#   In each subject, we calculated the connection probability (using FSL- FDT's probtrackX) from each amygdala
+#   voxel (seed) to all bilateral cortical and subcortical regions (targets), and normalized the distribution of probabilities 
+#   for each seed voxel to [0,1] by dividing by the maximum probability. We then thresholded and binarized these results to 
+#   exclude values below 0.1, such that every amygdaloid voxel contained a 0 or 1 for each target.
+#
+#   Script AssumesThat you have:
+#     1. installed fsl, FS and that folder structures are consitent with FS structure
+#     2. completed processing of t1/MPRAGE with FS (https://surfer.nmr.mgh.harvard.edu/fswiki/FreeSurferWiki), 
+#     3. made an aseg+aparc in diffusion space (Note this is generated as a by-product of TRCULA: https://surfer.nmr.mgh.harvard.edu/fswiki/Tracula)
+#     4. made single binary masks in diffusion space for each of these (see FS_LUT_ROI_Mask_extract_rename_v6.sh in my utilities for a quick extract/rename loop)
+#     5. a list of the relevant cortical targets called bilateral_labels.csv 
+#     
+foreach subj (`cat $SUBJECTS_DIR/subjects.txt`)
+foreach line (`cat bilateral_labels.csv`)
+set struct = `echo $line|cut -d\, -f1`
+set lh = `echo $line|cut -d\, -f2`
+set rh = `echo $line|cut -d\, -f3`
+echo ${line}
+echo ${struct}
+echo ${lh}
+echo ${rh}
+fslmaths $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}${rh} -add $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}${lh} $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_bilateral_${struct}.nii.gz
+echo "$SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_bilateral_${struct}.nii.gz" >>! $SUBJECTS_DIR/${subj}/ALLTARGETS.txt
+end
+foreach striatal_part (Caudate,11_Left-Caudate.label.nii.gz,50_Right-Caudate.label.nii.gz Putamen,12_Left-Putamen.label.nii.gz,51_Right-Putamen.label.nii.gz)
+set struct = `echo $striatal_part|cut -d\, -f1`
+set lh = `echo $striatal_part|cut -d\, -f2`
+set rh = `echo $striatal_part|cut -d\, -f3`
+fslmaths $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_${rh} -add $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_${lh} $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_bilateral_${struct}.nii.gz
+end
+fslmaths $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_bilateral_Accumbens.nii.gz -add $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_bilateral_Caudate.nii.gz -add $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_bilateral_Putamen.nii.gz $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_bilateral_Striatum.nii.gz
+echo "$SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_bilateral_Striatum.nii.gz" >>! $SUBJECTS_DIR/${subj}/ALLTARGETS.txt
+echo "$SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_16_Brain-Stem.label.nii.gz" >>! $SUBJECTS_DIR/${subj}/ALLTARGETS.txt
+fslmaths $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_4_Left-Lateral-Ventricle.label.nii.gz -add $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_43_Right-Lateral-Ventricle.label.nii.gz -add $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_14_3rd-Ventricle.label.nii.gz -add $SUBJECTS_DIR/${subj}/dlabel/diff/${subj}_15_4th-Ventricle.label.nii.gz $SUBJECTS_DIR/${subj}/dlabel/diff/all-ventricles.nii.gz
+end
